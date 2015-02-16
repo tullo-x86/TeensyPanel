@@ -1,84 +1,92 @@
 
+#Teensy path
+TEENSYPATH  := /home/tully/ArduinoSDK/1.0.5/
+TOOLSPATH   := $(TEENSYPATH)/hardware/tools
 
-TARGET = TeensyPanel
+#Compiler and Linker
+COMPILERPATH := $(TEENSYPATH)/hardware/tools/arm-none-eabi/bin
 
-TEENSYPATH = /home/tully/ArduinoSDK/1.0.5/
+CC          := $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
+CXX         := $(abspath $(COMPILERPATH))/arm-none-eabi-g++
+OBJCOPY     := $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
+SIZE        := $(abspath $(COMPILERPATH))/arm-none-eabi-size
 
-# Configurable options
-OPTIONS = -DF_CPU=96000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH
+#The Target Binary Program
+TARGET      := TeensyPanel
+
+#The Directories, Source, Includes, Objects, Binary and Resources
+SRCDIR      := src
+INCDIR      := inc
+BUILDDIR    := obj
+TARGETDIR   := bin
+SRCEXT      := cpp
+DEPEXT      := d
+OBJEXT      := o
+
+# Teensy configuration
+OPTIONS     := -DF_CPU=96000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH
 
 # Arduino library compatibility options
-OPTIONS += -D__MK20DX256__ -DARDUINO=105 -ffunction-sections -fdata-sections
+ARDCOMPAT   := -D__MK20DX256__ -DARDUINO=105 -ffunction-sections -fdata-sections
 
-# Teensy utilities
-TOOLSPATH = $(TEENSYPATH)/hardware/tools
+#Flags, Libraries and Includes
+CPPFLAGS    := -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib $(OPTIONS)
+CXXFLAGS    := -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
+CFLAGS      := 
+LDFLAGS     := -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -Tmk20dx256.ld
+LIB         := -lm
+INC         := -I$(INCDIR) -I./core
+INCDEP      := -I$(INCDIR)
 
-# Compiler location
-COMPILERPATH = $(TEENSYPATH)/hardware/tools/arm-none-eabi/bin
+#---------------------------------------------------------------------------------
+#DO NOT EDIT BELOW THIS LINE
+#---------------------------------------------------------------------------------
+SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
+OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
-CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
-CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
-OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
-SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
+#Default Make
+all: directories $(TARGET).hex
 
-INCLUDEPATHS = -I./core -I./ChibiOS_ARM -I./SdFat -I./ustl
+#Remake
+remake: cleaner all
 
-# Flags for C and C++
-CPPFLAGS = $(INCLUDEPATHS) -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I.
+#Make the Directories
+directories:
+	@mkdir -p $(TARGETDIR)
+	@mkdir -p $(BUILDDIR)
 
-# C++-only flags
-CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
+#Clean only Objecst
+clean:
+	@$(RM) -rf $(BUILDDIR)
 
-# C-only flags
-CFLAGS = 
+#Full Clean, Objects and Binaries
+cleaner: clean
+	@$(RM) -rf $(TARGETDIR)
 
-# Linker flags
-LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -Tmk20dx256.ld
+#Pull in dependency info for *existing* .o files
+-include $(OBJECTS:.$(OBJEXT)=.$(DEPEXT))
 
-# additional libraries to link
-LIBS = -lm
+#Link
+$(TARGET).elf: $(OBJECTS) mk20dx256.ld
+	$(CC) $(LDFLAGS) -o $(TARGETDIR)/$(TARGET).elf $(OBJECTS) $(LIB)
 
-
-OBJDIR := obj
-
-# automatically create lists of the sources and objects
-# TODO: this does not handle Arduino libraries yet...
-TEENSYCORE_C_FILES := $(wildcard core/*.c) 
-TEENSYCORE_CPP_FILES := $(wildcard core/*.cpp)
-C_FILES := $(wildcard src/*.c)
-CPP_FILES := $(wildcard src/*.cpp)
-OBJS := $(TEENSYCORE_C_FILES:.c=.o) $(TEENSYCORE_CPP_FILES:.cpp=.o) \
-			$(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
-
-
-# RULES section
-all: $(TARGET).hex
-
-# Compiler rule
-
-
-# Linker rule
-$(TARGET).elf: $(OBJS) mk20dx256.ld
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
-
+#Hexfile
 %.hex: %.elf
 	$(SIZE) $<
 	$(OBJCOPY) -O ihex -R .eeprom $< $@
 	#./teensy_loader -mmcu=mk20dx128 -w -v $(TARGET).hex
-	$(abspath $(TOOLSPATH))/teensy_post_compile -file=$(basename $@) -path=$(shell pwd) -tools=$(abspath $(TOOLSPATH))
+	#$(abspath $(TOOLSPATH))/teensy_post_compile -file=$(basename $@) -path=$(shell pwd) -tools=$(abspath $(TOOLSPATH))
 	#-$(abspath $(TOOLSPATH))/teensy_reboot
 
-upload: all
-	./teensy_loader -mmcu=mk20dx128 -w -v $(TARGET).hex
+#Compile
+$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
+	@$(CC) $(CFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
+	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
+	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
+	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
+	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
 
-monitor:
-	screen /dev/ttyACM0 115200
-
-# compiler generated dependency info
--include $(OBJS:.o=.d)
-
-clean:
-	find ./ -type f -name "*.o" -delete
-	rm -f *.o *.d $(TARGET).elf $(TARGET).hex
-
-
+#Non-File Targets
+.PHONY: all remake clean cleaner
