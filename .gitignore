@@ -4,3 +4,8 @@
 *.hex
 *.elf
 *.d
+
+# Transitionary files
+*.backup
+*.kate-swp
+
