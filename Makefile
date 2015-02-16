@@ -19,7 +19,8 @@ SRCDIR      := src
 INCDIR      := inc
 BUILDDIR    := obj
 TARGETDIR   := bin
-SRCEXT      := cpp
+CXXEXT      := cpp
+CEXT        := c
 DEPEXT      := d
 OBJEXT      := o
 
@@ -33,7 +34,7 @@ ARDCOMPAT   := -D__MK20DX256__ -DARDUINO=105 -ffunction-sections -fdata-sections
 CPPFLAGS    := -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib $(OPTIONS)
 CXXFLAGS    := -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
 CFLAGS      := 
-LDFLAGS     := -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -Tmk20dx256.ld
+LDFLAGS     := -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb
 LIB         := -lm
 INC         := -I$(INCDIR) -I./core
 INCDEP      := -I$(INCDIR)
@@ -41,8 +42,10 @@ INCDEP      := -I$(INCDIR)
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
 #---------------------------------------------------------------------------------
-SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
+CXXSOURCES  := $(shell find $(SRCDIR) -type f -name *.$(CXXEXT))
+CSOURCES    := $(shell find $(SRCDIR) -type f -name *.$(CEXT))
+SOURCES     := $(CXXSOURCES:.$(CXXEXT)=.$(OBJEXT)) $(CSOURCES:.$(CEXT)=.$(OBJEXT))
+OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES))
 
 #Default Make
 all: directories $(TARGET).hex
@@ -68,7 +71,7 @@ cleaner: clean
 
 #Link
 $(TARGET).elf: $(OBJECTS) mk20dx256.ld
-	$(CC) $(LDFLAGS) -o $(TARGETDIR)/$(TARGET).elf $(OBJECTS) $(LIB)
+	$(CC) $(LDFLAGS) -Tmk20dx256.ld -o $(TARGETDIR)/$(TARGET).elf $(OBJECTS) $(LIB)
 
 #Hexfile
 %.hex: %.elf
@@ -78,11 +81,21 @@ $(TARGET).elf: $(OBJECTS) mk20dx256.ld
 	#$(abspath $(TOOLSPATH))/teensy_post_compile -file=$(basename $@) -path=$(shell pwd) -tools=$(abspath $(TOOLSPATH))
 	#-$(abspath $(TOOLSPATH))/teensy_reboot
 
-#Compile
-$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
+#Compile CXX files
+$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(CXXEXT)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CXXFLAGS) $(INC) -c -o $@ $<
+	@$(CC) $(CPPFLAGS) $(CXXFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(CXXEXT) > $(BUILDDIR)/$*.$(DEPEXT)
+	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
+	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
+	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
+	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
+
+#Compile C files
+$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(CEXT)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
-	@$(CC) $(CFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
+	@$(CC) $(CFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(CEXT) > $(BUILDDIR)/$*.$(DEPEXT)
 	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
 	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
 	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
