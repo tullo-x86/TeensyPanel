@@ -1,70 +1,63 @@
 
-# The name of your project (used to name the compiled .hex file)
+
 TARGET = TeensyPanel
 
 TEENSYPATH = /home/tully/ArduinoSDK/1.0.5/
 
-# configurable options
+# Configurable options
 OPTIONS = -DF_CPU=96000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH
 
-# options needed by many Arduino libraries to configure for Teensy 3.0
+# Arduino library compatibility options
 OPTIONS += -D__MK20DX256__ -DARDUINO=105 -ffunction-sections -fdata-sections
 
+# Teensy utilities
+TOOLSPATH = $(TEENSYPATH)/hardware/tools
 
-#************************************************************************
-# Location of Teensyduino utilities, Toolchain, and Arduino Libraries.
-# To use this makefile without Arduino, copy the resources from these
-# locations and edit the pathnames.  The rest of Arduino is not needed.
-#************************************************************************
-
-# path location for Teensy Loader, teensy_post_compile and teensy_reboot
-TOOLSPATH = $(TEENSYPATH)/hardware/tools   # on Linux
-#TOOLSPATH = ../../../tools/avr/bin   # on Mac or Windows
-
-# path location for the arm-none-eabi compiler
+# Compiler location
 COMPILERPATH = $(TEENSYPATH)/hardware/tools/arm-none-eabi/bin
 
-#************************************************************************
-# Settings below this point usually do not need to be edited
-#************************************************************************
+CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
+CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
+OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
+SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
 
 INCLUDEPATHS = -I./core -I./ChibiOS_ARM -I./SdFat -I./ustl
-# CPPFLAGS = compiler options for C and C++
+
+# Flags for C and C++
 CPPFLAGS = $(INCLUDEPATHS) -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I.
 
-# compiler options for C++ only
+# C++-only flags
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
 
-# compiler options for C only
+# C-only flags
 CFLAGS = 
 
-# linker options
+# Linker flags
 LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -Tmk20dx256.ld
 
 # additional libraries to link
 LIBS = -lm
 
 
-# names for the compiler programs
-CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
-CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
-OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
-SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
+OBJDIR := obj
 
 # automatically create lists of the sources and objects
 # TODO: this does not handle Arduino libraries yet...
 TEENSYCORE_C_FILES := $(wildcard core/*.c) 
 TEENSYCORE_CPP_FILES := $(wildcard core/*.cpp)
-C_FILES := $(wildcard *.c)
-CPP_FILES := $(wildcard *.cpp)
+C_FILES := $(wildcard src/*.c)
+CPP_FILES := $(wildcard src/*.cpp)
 OBJS := $(TEENSYCORE_C_FILES:.c=.o) $(TEENSYCORE_CPP_FILES:.cpp=.o) \
 			$(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 
 
-# the actual makefile rules (all .o files built by GNU make's default implicit rules)
-
+# RULES section
 all: $(TARGET).hex
 
+# Compiler rule
+
+
+# Linker rule
 $(TARGET).elf: $(OBJS) mk20dx256.ld
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
@@ -73,7 +66,7 @@ $(TARGET).elf: $(OBJS) mk20dx256.ld
 	$(OBJCOPY) -O ihex -R .eeprom $< $@
 	#./teensy_loader -mmcu=mk20dx128 -w -v $(TARGET).hex
 	$(abspath $(TOOLSPATH))/teensy_post_compile -file=$(basename $@) -path=$(shell pwd) -tools=$(abspath $(TOOLSPATH))
-	-$(abspath $(TOOLSPATH))/teensy_reboot
+	#-$(abspath $(TOOLSPATH))/teensy_reboot
 
 upload: all
 	./teensy_loader -mmcu=mk20dx128 -w -v $(TARGET).hex
