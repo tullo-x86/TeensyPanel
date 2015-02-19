@@ -82,8 +82,8 @@ int main() {
   // Serial.begin(38400);
   // Serial.println("resetting!");
   delay(3000);
-  LEDS.addLeds<WS2811,5,RGB>(leds,NUM_LEDS);
-  LEDS.setBrightness(96);
+  LEDS.addLeds<WS2811,5,GRB>(leds,NUM_LEDS);
+  LEDS.setBrightness(16);
 
   // Initialize our coordinates to some random values
   x = random16();
