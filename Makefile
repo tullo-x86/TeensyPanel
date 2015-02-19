@@ -21,7 +21,7 @@ CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
 OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
 SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
 
-INCLUDEPATHS = -I./core -I./ChibiOS_ARM -I./SdFat -I./ustl
+INCLUDEPATHS = -I./core -I./FastLED -I./ChibiOS_ARM -I./SdFat -I./ustl
 
 # Flags for C and C++
 CPPFLAGS = $(INCLUDEPATHS) -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I.
@@ -47,8 +47,11 @@ TEENSYCORE_C_FILES := $(wildcard core/*.c)
 TEENSYCORE_CPP_FILES := $(wildcard core/*.cpp)
 C_FILES := $(wildcard src/*.c)
 CPP_FILES := $(wildcard src/*.cpp)
+FASTLED_C_FILES := $(wildcard FastLED/*.c)
+FASTLED_CPP_FILES := $(wildcard FastLED/*.cpp)
 OBJS := $(TEENSYCORE_C_FILES:.c=.o) $(TEENSYCORE_CPP_FILES:.cpp=.o) \
-			$(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
+			$(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) \
+			$(FASTLED_C_FILES:.c=.o) $(FASTLED_CPP_FILES:.cpp=.o)
 
 
 # RULES section
