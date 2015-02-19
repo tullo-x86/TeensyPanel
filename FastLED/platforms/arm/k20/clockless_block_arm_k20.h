@@ -15,7 +15,7 @@
 #define MIN(X,Y) (((X)<(Y)) ? (X):(Y))
 #define LANES ((FIRST_PIN==2) ? MIN(__LANES,8) : MIN(__LANES,12))
 
-#include "kinetis.h"
+#include "mk20dx128.h"
 
 template <uint8_t __LANES, int FIRST_PIN, int T1, int T2, int T3, EOrder RGB_ORDER = GRB, int XTRA0 = 0, bool FLIP = false, int WAIT_TIME = 40>
 class InlineBlockClocklessController : public CLEDController {
