@@ -48,7 +48,8 @@ static uint16_t z;
 // 1 for a very slow moving effect, or 60 for something that ends up looking like
 // water.
 // uint16_t speed = 1; // almost looks like a painting, moves very slowly
-uint16_t speed = 20; // a nice starting speed, mixes well with a scale of 100
+uint16_t speed = 3;
+// uint16_t speed = 20; // a nice starting speed, mixes well with a scale of 100
 // uint16_t speed = 33;
 // uint16_t speed = 100; // wicked fast!
 
@@ -57,9 +58,10 @@ uint16_t speed = 20; // a nice starting speed, mixes well with a scale of 100
 // higher the value of scale, the more "zoomed out" the noise iwll be.  A value
 // of 1 will be so zoomed in, you'll mostly see solid colors.
 
-// uint16_t scale = 1; // mostly just solid colors
+//uint16_t scale = 1; // mostly just solid colors
+uint16_t scale = 50;
 // uint16_t scale = 4011; // very zoomed out and shimmery
-uint16_t scale = 311;
+//uint16_t scale = 311;
 
 // This is the array that we keep our computed noise values in
 uint8_t noise[MAX_DIMENSION][MAX_DIMENSION];
@@ -81,9 +83,9 @@ int main() {
   // uncomment the following lines if you want to see FPS count information
   // Serial.begin(38400);
   // Serial.println("resetting!");
-  delay(3000);
-  LEDS.addLeds<WS2811,5,GRB>(leds,NUM_LEDS);
-  LEDS.setBrightness(16);
+  delay(1000);
+  LEDS.addLeds<WS2811, 2, GRB>(leds, NUM_LEDS);
+  set_max_power_in_volts_and_milliamps(5, 150);
 
   // Initialize our coordinates to some random values
   x = random16();
@@ -106,7 +108,7 @@ int main() {
     }
     ihue+=1;
 
-    LEDS.show();
+    show_at_max_brightness_for_power();
     // delay(10);
   }
 }
