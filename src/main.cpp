@@ -84,8 +84,11 @@ int main() {
   // Serial.begin(38400);
   // Serial.println("resetting!");
   delay(1000);
+  pinMode(13, OUTPUT);
   LEDS.addLeds<WS2811, 2, GRB>(leds, NUM_LEDS);
+  LEDS.setBrightness(32);
   set_max_power_in_volts_and_milliamps(5, 150);
+  set_max_power_indicator_LED(13);
 
   // Initialize our coordinates to some random values
   x = random16();
@@ -109,6 +112,7 @@ int main() {
     ihue+=1;
 
     show_at_max_brightness_for_power();
-    // delay(10);
+    // delay_at_max_brightness_for_power(10);
   }
 }
+
