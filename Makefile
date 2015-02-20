@@ -69,7 +69,7 @@ $(TARGET).elf: $(OBJS) mk20dx256.ld
 	$(OBJCOPY) -O ihex -R .eeprom $< $@
 	#./teensy_loader -mmcu=mk20dx128 -w -v $(TARGET).hex
 	$(abspath $(TOOLSPATH))/teensy_post_compile -file=$(basename $@) -path=$(shell pwd) -tools=$(abspath $(TOOLSPATH))
-	#-$(abspath $(TOOLSPATH))/teensy_reboot
+	$(abspath $(TOOLSPATH))/teensy_reboot
 
 upload: all
 	./teensy_loader -mmcu=mk20dx128 -w -v $(TARGET).hex
