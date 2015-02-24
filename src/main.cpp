@@ -1,118 +1,58 @@
-#include<FastLED.h>
+#include <FastLED.h>
+#include "matrix.h"
 
-//
-// Mark's xy coordinate mapping code.  See the XYMatrix for more information on it.
-//
+void draw(int, int);
 
-// Params for width and height
-const uint8_t kMatrixWidth = 16;
-const uint8_t kMatrixHeight = 16;
-#define MAX_DIMENSION ((kMatrixWidth>kMatrixHeight) ? kMatrixWidth : kMatrixHeight)
-#define NUM_LEDS (kMatrixWidth * kMatrixHeight)
-// Param for different pixel layouts
-const bool    kMatrixSerpentineLayout = true;
-
-
-uint16_t XY( uint8_t x, uint8_t y)
-{
-  uint16_t i;
-
-  if( kMatrixSerpentineLayout == false) {
-    i = (y * kMatrixWidth) + x;
-  }
-
-  if( kMatrixSerpentineLayout == true) {
-    if( y & 0x01) {
-      // Odd rows run backwards
-      uint8_t reverseX = (kMatrixWidth - 1) - x;
-      i = (y * kMatrixWidth) + reverseX;
-    } else {
-      // Even rows run forwards
-      i = (y * kMatrixWidth) + x;
-    }
-  }
-
-  return i;
-}
-
-// The leds
-CRGB leds[kMatrixWidth * kMatrixHeight];
-
-// The 32bit version of our coordinates
-static uint16_t x;
-static uint16_t y;
-static uint16_t z;
-
-// We're using the x/y dimensions to map to the x/y pixels on the matrix.  We'll
-// use the z-axis for "time".  speed determines how fast time moves forward.  Try
-// 1 for a very slow moving effect, or 60 for something that ends up looking like
-// water.
-// uint16_t speed = 1; // almost looks like a painting, moves very slowly
-uint16_t speed = 3;
-// uint16_t speed = 20; // a nice starting speed, mixes well with a scale of 100
-// uint16_t speed = 33;
-// uint16_t speed = 100; // wicked fast!
-
-// Scale determines how far apart the pixels in our noise matrix are.  Try
-// changing these values around to see how it affects the motion of the display.  The
-// higher the value of scale, the more "zoomed out" the noise iwll be.  A value
-// of 1 will be so zoomed in, you'll mostly see solid colors.
-
-//uint16_t scale = 1; // mostly just solid colors
-uint16_t scale = 50;
-// uint16_t scale = 4011; // very zoomed out and shimmery
-//uint16_t scale = 311;
-
-// This is the array that we keep our computed noise values in
-uint8_t noise[MAX_DIMENSION][MAX_DIMENSION];
-
-// Fill the x/y array of 8-bit noise values using the inoise8 function.
-void fillnoise8() {
-  for(int i = 0; i < MAX_DIMENSION; i++) {
-    int ioffset = scale * i;
-    for(int j = 0; j < MAX_DIMENSION; j++) {
-      int joffset = scale * j;
-      noise[i][j] = inoise8(x + ioffset,y + joffset,z);
-    }
-  }
-  z += speed;
-}
-
+const int drawDelayMs = 500;
+uint32_t lastDraw = 0;
 
 int main() {
-  // uncomment the following lines if you want to see FPS count information
-  // Serial.begin(38400);
-  // Serial.println("resetting!");
-  delay(1000);
-  pinMode(13, OUTPUT);
-  LEDS.addLeds<WS2811, 2, GRB>(leds, NUM_LEDS);
-  LEDS.setBrightness(32);
-  set_max_power_in_volts_and_milliamps(5, 150);
-  set_max_power_indicator_LED(13);
+    delay(100);
+    pinMode(13, OUTPUT);
+    LEDS.addLeds<WS2811, 2, GRB>(Matrix::frameBuffer, NUM_LEDS);
+    LEDS.setBrightness(16);
+    set_max_power_in_volts_and_milliamps(5, 1000);
+    set_max_power_indicator_LED(13);
 
-  // Initialize our coordinates to some random values
-  x = random16();
-  y = random16();
-  z = random16();
-  
-  uint8_t ihue=0;
-  while(1) {  
-    fillnoise8();
-    for(int i = 0; i < kMatrixWidth; i++) {
-        for(int j = 0; j < kMatrixHeight; j++) {
-        // We use the value at the (i,j) coordinate in the noise
-        // array for our brightness, and the flipped value from (j,i)
-        // for our pixel's hue.
-        leds[XY(i,j)] = CHSV(noise[j][i],255,noise[i][j]);
-
-        // You can also explore other ways to constrain the hue used, like below
-        // leds[XY(i,j)] = CHSV(ihue + (noise[j][i]>>2),255,noise[i][j]);
+    int xOffset = 0;
+    while(1) {
+        uint32_t now = millis();
+        if (now > lastDraw + drawDelayMs) {
+            lastDraw = now;
+            draw(xOffset, 0);
+            xOffset += 1;
+            if (xOffset > 28) xOffset = -3;
         }
-    }
-    ihue+=1;
+        
+        blur2d(Matrix::frameBuffer, kMatrixWidth, kMatrixHeight, 32);
 
-    show_at_max_brightness_for_power();
-    // delay_at_max_brightness_for_power(10);
-  }
+        show_at_max_brightness_for_power();
+        delay_at_max_brightness_for_power(30);
+    }
 }
 
+bool isCellBright(int xCoord, int yCoord, int iteration) {
+    
+    int threshold = (1 << iteration);
+    
+    if (xCoord >= threshold && yCoord >= threshold)
+        return false;
+    else if (xCoord < 0 || yCoord < 0)
+        return false;
+    else if (xCoord == 0 || yCoord == 0)
+        return true;
+    else
+        return isCellBright(xCoord % threshold, yCoord % threshold, iteration - 1);
+}
+
+const int maxIterations = 4;
+
+void draw(int xOffset, int yOffset) {
+    for(int xCoord = 0; xCoord < 16; xCoord++) {
+        for(int yCoord = 0; yCoord < 16; yCoord++) {
+            
+            CRGB color = isCellBright(xCoord + xOffset, yCoord + yOffset, maxIterations) ? 0xFFFFFF : 0x000000;
+            Matrix::frameBuffer[XYsafe(xCoord, yCoord)] = color;
+        }
+    }
+}
