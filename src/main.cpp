@@ -12,8 +12,8 @@ int main() {
     delay(100);
     pinMode(13, OUTPUT);
     LEDS.addLeds<WS2811, 2, GRB>(Matrix::frameBuffer, NUM_LEDS);
-    LEDS.setBrightness(64);
-    set_max_power_in_volts_and_milliamps(5, 1000);
+    LEDS.setBrightness(255);
+    set_max_power_in_volts_and_milliamps(5, 800);
     set_max_power_indicator_LED(13);
 
     int xOffset = 0;
